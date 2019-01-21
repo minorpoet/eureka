@@ -59,6 +59,7 @@
     <url-pattern>/*</url-pattern>
   </filter-mapping>
 
+  <!-- 频率限制默认没开启 -->
   <!-- Uncomment this to enable rate limiter filter.
   <filter-mapping>
     <filter-name>rateLimitingFilter</filter-name>
