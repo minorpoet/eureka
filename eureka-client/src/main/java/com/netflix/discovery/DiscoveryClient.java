@@ -400,6 +400,7 @@ public class DiscoveryClient implements EurekaClient {
                             .build()
             );  // use direct handoff
 
+            // EurekaTransport，支持底层的eureka client跟eureka server进行网络通信的组件，对网络通信组件进行了一些初始化的操作
             eurekaTransport = new EurekaTransport();
             scheduleServerEndpointTask(eurekaTransport, args);
 
@@ -409,6 +410,8 @@ public class DiscoveryClient implements EurekaClient {
             } else {
                 azToRegionMapper = new PropertyBasedAzToRegionMapper(clientConfig);
             }
+
+            // 如果要获取注册表的话，就去做呗
             if (null != remoteRegionsToFetch.get()) {
                 azToRegionMapper.setRegionsToFetch(remoteRegionsToFetch.get().split(","));
             }
@@ -425,6 +428,8 @@ public class DiscoveryClient implements EurekaClient {
         if (this.preRegistrationHandler != null) {
             this.preRegistrationHandler.beforeRegistration();
         }
+
+        // 初始化周期性任务，心跳、 拉注册信息
         initScheduledTasks();
 
         try {
@@ -1243,6 +1248,8 @@ public class DiscoveryClient implements EurekaClient {
      * Initializes all scheduled tasks.
      */
     private void initScheduledTasks() {
+
+        // 定期刷新注册信息
         if (clientConfig.shouldFetchRegistry()) {
             // registry cache refresh timer
             int registryFetchIntervalSeconds = clientConfig.getRegistryFetchIntervalSeconds();
@@ -1260,6 +1267,7 @@ public class DiscoveryClient implements EurekaClient {
                     registryFetchIntervalSeconds, TimeUnit.SECONDS);
         }
 
+        // 心跳保活
         if (clientConfig.shouldRegisterWithEureka()) {
             int renewalIntervalInSecs = instanceInfo.getLeaseInfo().getRenewalIntervalInSecs();
             int expBackOffBound = clientConfig.getHeartbeatExecutorExponentialBackOffBound();

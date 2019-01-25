@@ -177,7 +177,8 @@ public class EurekaBootStrap implements ServletContextListener {
                     // 构造器模式构造服务实例的信息 InstanceInfo
                     new EurekaConfigBasedInstanceInfoProvider(instanceConfig).get());
 
-            // 初始化 EurekaClient 的配置
+            // 初始化 EurekaClient 的配置, 和 EurekaInstanceConfig 一样也是加载 eureka-client.properties 文件的配置 ，
+            // 但是 EurekaClientConfig 关注的作为eureka客户端要和服务端进行交互的行为配置，如 间隔多久从 eureka-server 获取注册信息（30s 默认）
             EurekaClientConfig eurekaClientConfig = new DefaultEurekaClientConfig();
             eurekaClient = new DiscoveryClient(applicationInfoManager, eurekaClientConfig);
         } else {
