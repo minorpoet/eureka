@@ -75,6 +75,10 @@ import javax.inject.Singleton;
  * fails, the server does not allow the user to get the registry information for
  * a period specified in
  * {@link com.netflix.eureka.EurekaServerConfig#getWaitTimeInMsWhenSyncEmpty()}.
+ *
+ * eureka server 启动时，它会尝试从相邻的节点中获取所有的注册信息，
+ * 如果获取失败了，它将在 WaitTimeInMsWhenSyncEmpty 时间内不允许其他服务从自己这里获取注册信息
+ *
  * </p>
  *
  * <p>
@@ -83,6 +87,9 @@ import javax.inject.Singleton;
  * {@link com.netflix.eureka.EurekaServerConfig#getRenewalPercentThreshold()} within a period of
  * {@link com.netflix.eureka.EurekaServerConfig#getRenewalThresholdUpdateIntervalMs()}, eureka
  * perceives this as a danger and stops expiring instances.
+ *
+ * 如果当前 eureka-server 在一段时间内获取到的心跳比例小于一定的阈值的话，比如一共有20个服务实例，在15分钟内只有10个服务实例发送的心跳，
+ * eureka server就会认为自己网络出现了故障，不会将另外10个服务实例从注册表中摘除，而是让自己进入一个自我保护的状态
  * </p>
  *
  * @author Karthik Ranganathan, Greg Kim

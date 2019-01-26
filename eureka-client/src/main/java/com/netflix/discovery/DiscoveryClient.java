@@ -420,6 +420,7 @@ public class DiscoveryClient implements EurekaClient {
             throw new RuntimeException("Failed to initialize DiscoveryClient!", e);
         }
 
+        // 如果拉取注册信息失败，则获取备用的注册信息
         if (clientConfig.shouldFetchRegistry() && !fetchRegistry(false)) {
             fetchRegistryFromBackup();
         }
@@ -1249,7 +1250,7 @@ public class DiscoveryClient implements EurekaClient {
      */
     private void initScheduledTasks() {
 
-        // 定期刷新注册信息
+        // 如果要获取注册表的话，定期获取注册信息并更新本地缓存
         if (clientConfig.shouldFetchRegistry()) {
             // registry cache refresh timer
             int registryFetchIntervalSeconds = clientConfig.getRegistryFetchIntervalSeconds();
@@ -1267,7 +1268,7 @@ public class DiscoveryClient implements EurekaClient {
                     registryFetchIntervalSeconds, TimeUnit.SECONDS);
         }
 
-        // 心跳保活
+        // 如果要注册到 eureka server，定时发心跳（心跳保活）
         if (clientConfig.shouldRegisterWithEureka()) {
             int renewalIntervalInSecs = instanceInfo.getLeaseInfo().getRenewalIntervalInSecs();
             int expBackOffBound = clientConfig.getHeartbeatExecutorExponentialBackOffBound();
