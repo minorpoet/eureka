@@ -373,7 +373,7 @@ public class DiscoveryClient implements EurekaClient {
 
         try {
             // default size of 2 - 1 each for heartbeat and cacheRefresh
-            // 调度线程池
+            // 调度线程池, 2个线程 一个给心跳用、一个给缓存更新的用
             scheduler = Executors.newScheduledThreadPool(2,
                     new ThreadFactoryBuilder()
                             .setNameFormat("DiscoveryClient-%d")
@@ -411,7 +411,6 @@ public class DiscoveryClient implements EurekaClient {
                 azToRegionMapper = new PropertyBasedAzToRegionMapper(clientConfig);
             }
 
-            // 如果要获取注册表的话，就去做呗
             if (null != remoteRegionsToFetch.get()) {
                 azToRegionMapper.setRegionsToFetch(remoteRegionsToFetch.get().split(","));
             }
@@ -424,6 +423,9 @@ public class DiscoveryClient implements EurekaClient {
         if (clientConfig.shouldFetchRegistry() && !fetchRegistry(false)) {
             fetchRegistryFromBackup();
         }
+
+        // ！！！ 理论上来说，应该在这里就注册到server
+        // 而不是在 初始化周期性任务里边做 initScheduledTasks -> ReplicationInstance 搞一个复制的概念
 
         // call and execute the pre registration handler before all background tasks (inc registration) is started
         if (this.preRegistrationHandler != null) {
@@ -818,6 +820,7 @@ public class DiscoveryClient implements EurekaClient {
         logger.info(PREFIX + appPathIdentifier + ": registering service...");
         EurekaHttpResponse<Void> httpResponse;
         try {
+            // 通过 jersey框架，http调用 eureka server暴露的注册接口，将自己的服务实例信息注册上去
             httpResponse = eurekaTransport.registrationClient.register(instanceInfo);
         } catch (Exception e) {
             logger.warn("{} - registration failed {}", PREFIX + appPathIdentifier, e.getMessage(), e);
@@ -925,6 +928,8 @@ public class DiscoveryClient implements EurekaClient {
      * This method tries to get only deltas after the first fetch unless there
      * is an issue in reconciling eureka server and client registry information.
      * </p>
+     *
+     * 获取注册表的这个方法，除了在第一次全量获取后 都是获取的增量信息， 如果服务端和客服端的注册信息不一致的时候才会再全量获取
      *
      * @param forceFullRegistryFetch Forces a full registry fetch.
      *
@@ -1288,6 +1293,8 @@ public class DiscoveryClient implements EurekaClient {
                     renewalIntervalInSecs, TimeUnit.SECONDS);
 
             // InstanceInfo replicator
+
+            // 实例信息复制组件，在这里边做了服务注册的操作
             instanceInfoReplicator = new InstanceInfoReplicator(
                     this,
                     instanceInfo,
@@ -1317,6 +1324,7 @@ public class DiscoveryClient implements EurekaClient {
                 applicationInfoManager.registerStatusChangeListener(statusChangeListener);
             }
 
+            // 在服务实例启动后40s注册上去
             instanceInfoReplicator.start(clientConfig.getInitialInstanceInfoReplicationIntervalSeconds());
         } else {
             logger.info("Not registering with Eureka server per configuration");
@@ -1450,6 +1458,9 @@ public class DiscoveryClient implements EurekaClient {
         }
     }
 
+    /**
+     *  在定时调度刷新缓存的时候 刷新注册表
+     */
     @VisibleForTesting
     void refreshRegistry() {
         try {
@@ -1460,6 +1471,7 @@ public class DiscoveryClient implements EurekaClient {
             String latestRemoteRegions = clientConfig.fetchRegistryForRemoteRegions();
             if (null != latestRemoteRegions) {
                 String currentRemoteRegions = remoteRegionsToFetch.get();
+                // 检查注册中心的区域是否发生变化，如果发生变化了则强制拉取所有注册表
                 if (!latestRemoteRegions.equals(currentRemoteRegions)) {
                     // Both remoteRegionsToFetch and AzToRegionMapper.regionsToFetch need to be in sync
                     synchronized (instanceRegionChecker.getAzToRegionMapper()) {

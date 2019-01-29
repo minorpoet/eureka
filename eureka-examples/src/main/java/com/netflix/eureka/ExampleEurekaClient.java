@@ -146,7 +146,8 @@ public class ExampleEurekaClient {
         System.setProperty("eureka.port", "8080");
         System.setProperty("eureka.preferSameZone", "false");
         System.setProperty("eureka.shouldUseDns", "false");
-        System.setProperty("eureka.shouldFetchRegistry", "false");
+        // 是否要获取注册表
+        System.setProperty("eureka.shouldFetchRegistry", "true");
         System.setProperty("eureka.serviceUrl.defaultZone", myServiceUrl);
         System.setProperty("eureka.serviceUrl.default.defaultZone", myServiceUrl);
         System.setProperty("eureka.awsAccessId", "fake_aws_access_id");

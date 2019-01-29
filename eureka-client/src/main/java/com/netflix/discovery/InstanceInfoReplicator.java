@@ -61,7 +61,9 @@ class InstanceInfoReplicator implements Runnable {
 
     public void start(int initialDelayMs) {
         if (started.compareAndSet(false, true)) {
-            instanceInfo.setIsDirty();  // for initial register
+            // for initial register
+            // 将服务实例信息标记为 dirty
+            instanceInfo.setIsDirty();
             Future next = scheduler.schedule(this, initialDelayMs, TimeUnit.SECONDS);
             scheduledPeriodicRef.set(next);
         }
@@ -72,6 +74,10 @@ class InstanceInfoReplicator implements Runnable {
         started.set(false);
     }
 
+    /**
+     * 控制频率，注册服务
+     * @return
+     */
     public boolean onDemandUpdate() {
         if (rateLimiter.acquire(burstSize, allowedRatePerMinute)) {
             if (!scheduler.isShutdown()) {
@@ -102,10 +108,12 @@ class InstanceInfoReplicator implements Runnable {
 
     public void run() {
         try {
+            // 刷新服务实例的配置（数据中心、心跳配置）
             discoveryClient.refreshInstanceInfo();
 
             Long dirtyTimestamp = instanceInfo.isDirtyWithTime();
             if (dirtyTimestamp != null) {
+                // 真正的服务注册，  调用 EurekaClient 的注册方法
                 discoveryClient.register();
                 instanceInfo.unsetIsDirty(dirtyTimestamp);
             }
