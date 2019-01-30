@@ -145,6 +145,9 @@ public class ApplicationResource {
                                 @HeaderParam(PeerEurekaNode.HEADER_REPLICATION) String isReplication) {
         logger.debug("Registering instance {} (replication={})", info.getId(), isReplication);
         // validate that the instanceinfo contains all the necessary required fields
+
+        // 防御式编程， 可以抽出放在私有方法中这
+        // 一堆魔法数字呀 ~~
         if (isBlank(info.getId())) {
             return Response.status(400).entity("Missing instanceId").build();
         } else if (isBlank(info.getHostName())) {
@@ -167,6 +170,11 @@ public class ApplicationResource {
             String dataCenterInfoId = ((UniqueIdentifier) dataCenterInfo).getId();
             if (isBlank(dataCenterInfoId)) {
                 boolean experimental = "true".equalsIgnoreCase(serverConfig.getExperimental("registration.validation.dataCenterInfoId"));
+
+                // eureka里边存在很多这种环境判断的硬编码，
+                // 最好是有个 DataCenter dataCenter = DataCenterFactory.get() 根据 eureka.server.env = default 还是 aws 来返回
+                // 实现类可能s  DefaultDataCenter, 也可能是 AWSDataCenter，
+                // 直接就是运行接口方法， 面向接口编程
                 if (experimental) {
                     String entity = "DataCenterInfo of type " + dataCenterInfo.getClass() + " must contain a valid id";
                     return Response.status(400).entity(entity).build();

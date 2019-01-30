@@ -76,6 +76,20 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     private static final Logger logger = LoggerFactory.getLogger(AbstractInstanceRegistry.class);
 
     private static final String[] EMPTY_STR_ARRAY = new String[0];
+
+    /**
+     *  注册表
+     *
+     *  <{服务名称}， <{instanceId}, {服务实例信息的租约对象} >>
+     *
+     *  {"ServiceA":
+      *     {
+      *         "10.1.0.1:8080": Lease<InstanceInfo>,
+      *         "10.1.0.2:8080": Lease<InstanceInfo>,
+      *         "10.1.0.3:8080": Lease<InstanceInfo>
+      *     }
+     *  }
+      */
     private final ConcurrentHashMap<String, Map<String, Lease<InstanceInfo>>> registry
             = new ConcurrentHashMap<String, Map<String, Lease<InstanceInfo>>>();
     protected Map<String, RemoteRegionRegistry> regionNameVSRemoteRegistry = new HashMap<String, RemoteRegionRegistry>();
@@ -191,7 +205,10 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
      */
     public void register(InstanceInfo registrant, int leaseDuration, boolean isReplication) {
         try {
+            // 注册的时候用读锁，允许多个线程同时来注册服务
             read.lock();
+
+            // 通过服务名称从注册表中获取服务实例 <instanceId, 带租约相关信息的InstanceInfo> 的map
             Map<String, Lease<InstanceInfo>> gMap = registry.get(registrant.getAppName());
             REGISTER.increment(isReplication);
             if (gMap == null) {
@@ -201,6 +218,8 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                     gMap = gNewMap;
                 }
             }
+
+            // 通过 instanceId, 从gMap中获取服务实例对应的租约
             Lease<InstanceInfo> existingLease = gMap.get(registrant.getId());
             // Retain the last dirty timestamp without overwriting it, if there is already a lease
             if (existingLease != null && (existingLease.getHolder() != null)) {
@@ -230,11 +249,15 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                 }
                 logger.debug("No previous lease information found; it is new registration");
             }
+
+            // 将要注册的服务实例信息封装成 Lease 对象，放进 gMap 中，其中 key 就是服务实例id
             Lease<InstanceInfo> lease = new Lease<InstanceInfo>(registrant, leaseDuration);
             if (existingLease != null) {
                 lease.setServiceUpTimestamp(existingLease.getServiceUpTimestamp());
             }
             gMap.put(registrant.getId(), lease);
+
+            // 保存最近注册服务的队列
             synchronized (recentRegisteredQueue) {
                 recentRegisteredQueue.add(new Pair<Long, String>(
                         System.currentTimeMillis(),
