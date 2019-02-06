@@ -73,6 +73,9 @@ public class Applications {
     private Long versionDelta = Long.valueOf(-1);
 
     @XStreamImplicit
+    /**
+     * 所有服务的信息， Application包含服务中所有实例的信息（InstanceInfo)
+     */
     private AbstractQueue<Application> applications;
 
     private Map<String, Application> appNameApplicationMap = new ConcurrentHashMap<String, Application>();

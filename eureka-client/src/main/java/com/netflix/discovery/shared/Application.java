@@ -66,6 +66,9 @@ public class Application {
     private volatile boolean isDirty = false;
 
     @XStreamImplicit
+    /**
+     * 一个应用服务的所有实例
+     */
     private final Set<InstanceInfo> instances;
 
     private AtomicReference<List<InstanceInfo>> shuffledInstances = new AtomicReference<List<InstanceInfo>>();

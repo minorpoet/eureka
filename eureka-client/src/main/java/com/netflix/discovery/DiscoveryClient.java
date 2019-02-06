@@ -941,8 +941,10 @@ public class DiscoveryClient implements EurekaClient {
         try {
             // If the delta is disabled or if it is the first time, get all
             // applications
+            // 获取本地内存中的应用注册信息 Applications 为 eureka server 返回的所有注册上去的服务实例信息
             Applications applications = getApplications();
 
+            // 这一坨判断逻辑，应该用含义明确的变量来声明; 这样易于理解，也方便调试
             if (clientConfig.shouldDisableDelta()
                     || (!Strings.isNullOrEmpty(clientConfig.getRegistryRefreshSingleVipAddress()))
                     || forceFullRegistryFetch
@@ -957,8 +959,10 @@ public class DiscoveryClient implements EurekaClient {
                 logger.info("Registered Applications size is zero : {}",
                         (applications.getRegisteredApplications().size() == 0));
                 logger.info("Application version is -1: {}", (applications.getVersion() == -1));
+                // 获取全量注册表
                 getAndStoreFullRegistry();
             } else {
+                // 获取增量注册表
                 getAndUpdateDelta(applications);
             }
             applications.setAppsHashCode(applications.getReconcileHashCode());
