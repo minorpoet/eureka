@@ -141,12 +141,22 @@ public class ApplicationsResource {
             returnMediaType = MediaType.APPLICATION_XML;
         }
 
+        // 构建缓存 key
         Key cacheKey = new Key(Key.EntityType.Application,
                 ResponseCacheImpl.ALL_APPS,
                 keyType, CurrentRequestVersion.get(), EurekaAccept.fromString(eurekaAccept), regions
         );
 
+        /**
+         * 从缓存中获取
+         *
+         * responseCache 是从注册表基类 AbstractInstanceRegistry.getResponseCache 中取出来的缓存变量 responseCache
+         * 它是在 eureka server启动的时候初始化 注册中心上下文 EurekaServerContext.initialize() 的过程中初始化的,
+         * 实现类为 ResponseCacheImpl， 里边采用了多级缓存 (只读+读写)
+         *
+         */
         Response response;
+        // 看http请求头是否需要对响应进行压缩
         if (acceptEncoding != null && acceptEncoding.contains(HEADER_GZIP_VALUE)) {
             response = Response.ok(responseCache.getGZIP(cacheKey))
                     .header(HEADER_CONTENT_ENCODING, HEADER_GZIP_VALUE)

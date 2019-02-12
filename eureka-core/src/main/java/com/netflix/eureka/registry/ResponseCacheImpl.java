@@ -129,6 +129,7 @@ public class ResponseCacheImpl implements ResponseCache {
         long responseCacheUpdateIntervalMs = serverConfig.getResponseCacheUpdateIntervalMs();
         this.readWriteCacheMap =
                 CacheBuilder.newBuilder().initialCapacity(1000)
+                        // 默认 180s 过期
                         .expireAfterWrite(serverConfig.getResponseCacheAutoExpirationInSeconds(), TimeUnit.SECONDS)
                         .removalListener(new RemovalListener<Key, Value>() {
                             @Override
@@ -152,6 +153,7 @@ public class ResponseCacheImpl implements ResponseCache {
                             }
                         });
 
+        // 每隔 30s 以读写缓存为基准同步只读缓存
         if (shouldUseReadOnlyResponseCache) {
             timer.schedule(getCacheUpdateTask(),
                     new Date(((System.currentTimeMillis() / responseCacheUpdateIntervalMs) * responseCacheUpdateIntervalMs)
@@ -177,6 +179,7 @@ public class ResponseCacheImpl implements ResponseCache {
                         logger.debug("Updating the client cache from response cache for key : {} {} {} {}", args);
                     }
                     try {
+                        // 看看只读缓存的数据是不是已经脏掉了
                         CurrentRequestVersion.set(key.getVersion());
                         Value cacheValue = readWriteCacheMap.get(key);
                         Value currentCacheValue = readOnlyCacheMap.get(key);
@@ -345,10 +348,13 @@ public class ResponseCacheImpl implements ResponseCache {
         Value payload = null;
         try {
             if (useReadOnlyCache) {
+                // 先从只读缓存中获取
                 final Value currentPayload = readOnlyCacheMap.get(key);
                 if (currentPayload != null) {
                     payload = currentPayload;
-                } else {
+                }
+                // 如果获取不到再去读写缓存中取, 然后填充到只读缓存中
+                else {
                     payload = readWriteCacheMap.get(key);
                     readOnlyCacheMap.put(key, payload);
                 }
