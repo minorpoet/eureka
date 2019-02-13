@@ -1024,6 +1024,7 @@ public class DiscoveryClient implements EurekaClient {
                 remoteApp.populateInstanceCountMap(instanceCountMap);
             }
         }
+        // 计算每个应用的实例数量 塞进 map
         applications.populateInstanceCountMap(instanceCountMap);
         return Applications.getReconcileHashCode(instanceCountMap);
     }
@@ -1162,6 +1163,7 @@ public class DiscoveryClient implements EurekaClient {
 
         long currentUpdateGeneration = fetchRegistryGeneration.get();
 
+        // hash值不一致，去获取全量注册表
         EurekaHttpResponse<Applications> httpResponse = clientConfig.getRegistryRefreshSingleVipAddress() == null
                 ? eurekaTransport.queryClient.getApplications(remoteRegionsRef.get())
                 : eurekaTransport.queryClient.getVip(clientConfig.getRegistryRefreshSingleVipAddress(), remoteRegionsRef.get());
@@ -1172,6 +1174,7 @@ public class DiscoveryClient implements EurekaClient {
             return;
         }
 
+        // debug模式的话，会把 新增了哪些实例，修改了那些实例，删除了哪些实例都给打印出来
         if (logger.isDebugEnabled()) {
             try {
                 Map<String, List<String>> reconcileDiffMap = getApplications().getReconcileMapDiff(serverApps);
@@ -1190,6 +1193,7 @@ public class DiscoveryClient implements EurekaClient {
             }
         }
 
+        // 尝试更新注册表获取版本，成功的话就更新本地缓存
         if (fetchRegistryGeneration.compareAndSet(currentUpdateGeneration, currentUpdateGeneration + 1)) {
             localRegionApps.set(this.filterAndShuffle(serverApps));
             getApplications().setVersion(delta.getVersion());
@@ -1197,7 +1201,9 @@ public class DiscoveryClient implements EurekaClient {
                     "The Reconcile hashcodes after complete sync up, client : {}, server : {}.",
                     getApplications().getReconcileHashCode(),
                     delta.getAppsHashCode());
-        } else {
+        }
+        // 版本更新失败，标识已经有其他线程更新了本地注册缓存
+        else {
             logger.warn("Not setting the applications map as another thread has advanced the update generation");
         }
     }

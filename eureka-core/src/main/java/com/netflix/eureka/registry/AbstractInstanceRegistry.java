@@ -1028,6 +1028,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
             }
 
             Applications allApps = getApplicationsFromMultipleRegions(remoteRegions);
+            //  设置delta 的 hash 值为 eureka server 端全量注册表的hash值
             apps.setAppsHashCode(allApps.getReconcileHashCode());
             return apps;
         } finally {
