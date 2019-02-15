@@ -60,6 +60,8 @@ public class Lease<T> {
      * {@link #DEFAULT_DURATION_IN_SECS}.
      */
     public void renew() {
+        // 每次服务实例心跳过来， 就更新这个 lastUpdateTimestamp
+        // duration 默认90s
         lastUpdateTimestamp = System.currentTimeMillis() + duration;
 
     }
@@ -105,9 +107,14 @@ public class Lease<T> {
      * instances that ungracefully shutdown. Due to possible wide ranging impact to existing usage, this will
      * not be fixed.
      *
+     * renew() 更新上次心跳时间的已经加上 duration 了， 是个bug； 但是没多大影响， 在 duration * 2 内还没心跳过来，才认为实例故障了
+     *
      * @param additionalLeaseMs any additional lease time to add to the lease evaluation in ms.
      */
     public boolean isExpired(long additionalLeaseMs) {
+        // evictionTimestamp > 0 表示服务实例主动取消了
+        // System.currentTimeMillis() > (lastUpdateTimestamp + duration + additionalLeaseMs)：
+        // 当前时间大于 （上一次心跳时间，加上90s， 再加上补偿时间），表示服务实例没有发心跳了
         return (evictionTimestamp > 0 || System.currentTimeMillis() > (lastUpdateTimestamp + duration + additionalLeaseMs));
     }
 
