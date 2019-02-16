@@ -157,6 +157,7 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         this.numberOfReplicationsLastMin.start();
         this.peerEurekaNodes = peerEurekaNodes;
         initializedResponseCache();
+        // 默认每隔15分钟更新每分钟期望的心跳次数
         scheduleRenewalThresholdUpdateTask();
         initRemoteRegionRegistry();
 
@@ -243,7 +244,9 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
     @Override
     public void openForTraffic(ApplicationInfoManager applicationInfoManager, int count) {
         // Renewals happen every 30 seconds and for a minute it should be a factor of 2.
+        // 心跳是每隔30s发一次的，所以一分钟期望的的心跳次数，要乘以2
         this.expectedNumberOfRenewsPerMin = count * 2;
+        // 每分钟最少要接收到的心跳 = 每分钟内期望的总心跳 * 0.85
         this.numberOfRenewsPerMinThreshold =
                 (int) (this.expectedNumberOfRenewsPerMin * serverConfig.getRenewalPercentThreshold());
         logger.info("Got " + count + " instances from neighboring DS node");
@@ -261,7 +264,7 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         logger.info("Changing status to UP");
         applicationInfoManager.setInstanceStatus(InstanceStatus.UP);
 
-        // 核心代码咯~
+        // 核心代码咯~ 检查故障实例
         super.postInit();
     }
 
@@ -489,10 +492,16 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
 
     @Override
     public boolean isLeaseExpirationEnabled() {
+        // isSelfPreservationModeEnabled 默认是true，开启自我保护机制；
+        // 如果改为false的话，关闭自我保护机制，这个方法就返回true， 表示随时都可以清除故障实例
         if (!isSelfPreservationModeEnabled()) {
             // The self preservation mode is disabled, hence allowing the instances to expire.
             return true;
         }
+        // numberOfRenewsPerMinThreshold ：期望的一分钟有多少心跳发送过来
+        // getNumOfRenewsInLastMin(): 上一分钟所有服务实例一共发送过来多少心跳
+        // 如果上一分钟接收到的心跳次数 大于 期望的心跳个数，就返回true，表示可以清除故障实例
+        // 小于的话，返回false，表示 eureka server可能自身故障了
         return numberOfRenewsPerMinThreshold > 0 && getNumOfRenewsInLastMin() > numberOfRenewsPerMinThreshold;
     }
 
@@ -533,6 +542,7 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         try {
             Applications apps = eurekaClient.getApplications();
             int count = 0;
+            // 计算从别的节点获取到的服务实例个数
             for (Application app : apps.getRegisteredApplications()) {
                 for (InstanceInfo instance : app.getInstances()) {
                     if (this.isRegisterable(instance)) {
@@ -545,7 +555,9 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
                 // current expected threshold of if the self preservation is disabled.
                 if ((count * 2) > (serverConfig.getRenewalPercentThreshold() * numberOfRenewsPerMinThreshold)
                         || (!this.isSelfPreservationModeEnabled())) {
+                    // 实例每隔30s发送一次心跳， 每分钟发2次，所以总的心跳应该乘以2
                     this.expectedNumberOfRenewsPerMin = count * 2;
+                    // 更新每分钟收到心跳的临界值 （count*2）* 0.85
                     this.numberOfRenewsPerMinThreshold = (int) ((count * 2) * serverConfig.getRenewalPercentThreshold());
                 }
             }

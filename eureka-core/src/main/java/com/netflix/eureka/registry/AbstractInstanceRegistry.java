@@ -115,7 +115,14 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
     private final AtomicReference<EvictionTask> evictionTaskRef = new AtomicReference<EvictionTask>();
 
     protected String[] allKnownRemoteRegions = EMPTY_STR_ARRAY;
+
+    /**
+     * 每分钟最少接收到的心跳次数 = expectedNumberOfRenewsPerMin *
+     */
     protected volatile int numberOfRenewsPerMinThreshold;
+    /**
+     * 每分钟期望接收到的心跳总数
+     */
     protected volatile int expectedNumberOfRenewsPerMin;
 
     protected final EurekaServerConfig serverConfig;
@@ -242,6 +249,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                         // Since the client wants to cancel it, reduce the threshold
                         // (1
                         // for 30 seconds, 2 for a minute)
+                        // 每隔服务实例心跳2次，新增一个服务实例，每分钟的心跳应该加二
                         this.expectedNumberOfRenewsPerMin = this.expectedNumberOfRenewsPerMin + 2;
                         this.numberOfRenewsPerMinThreshold =
                                 (int) (this.expectedNumberOfRenewsPerMin * serverConfig.getRenewalPercentThreshold());
@@ -414,6 +422,7 @@ public abstract class AbstractInstanceRegistry implements InstanceRegistry {
                     instanceInfo.setStatusWithoutDirty(overriddenInstanceStatus);
                 }
             }
+            // 每次心跳的时候，增加每分钟的心跳次数
             renewsLastMin.increment();
             leaseToRenew.renew();
             return true;
