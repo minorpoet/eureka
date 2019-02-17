@@ -215,20 +215,26 @@ public class PeerAwareInstanceRegistryImpl extends AbstractInstanceRegistry impl
         // Copy entire entry from neighboring DS node
         int count = 0;
 
+        // 重试五次
         for (int i = 0; ((i < serverConfig.getRegistrySyncRetries()) && (count == 0)); i++) {
             if (i > 0) {
                 try {
+                    // 如果第一次还没有在自己本地的 eureka client 获取到注册表，
+                    // 说明本地的EurekaClient还没从其他任何 eureka server节点获取到注册表
+                    // 这时候重试，等待30s DiscoveryClient 定时拉取增量注册的间隔也是30s
                     Thread.sleep(serverConfig.getRegistrySyncRetryWaitMs());
                 } catch (InterruptedException e) {
                     logger.warn("Interrupted during registry transfer..");
                     break;
                 }
             }
+            // EurekaClient初始化的时候会去抓取注册表， 还有一个定时任务每隔30s抓取增量注册表
             Applications apps = eurekaClient.getApplications();
             for (Application app : apps.getRegisteredApplications()) {
                 for (InstanceInfo instance : app.getInstances()) {
                     try {
                         if (isRegisterable(instance)) {
+                            // 将从其他集群节点获取到的服务实例注册到本地
                             register(instance, instance.getLeaseInfo().getDurationInSecs(), true);
                             count++;
                         }
