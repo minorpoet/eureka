@@ -183,6 +183,8 @@ class AcceptorExecutor<ID, T> {
             long scheduleTime = 0;
             while (!isShutdown.get()) {
                 try {
+                    // 将任务从 acceptorQueue 拿出来，放入pendingTask的map中，如果map中原来不存在这个task，则将它加入到 processingOrder中
+                    // 然后每个500ms 将任务从processingOrder队列中取出 最多250个作为一批，放到 batchWorkQueue ： BlockingQueue<List<TaskHolder<ID, T>>>
                     drainInputQueues();
 
                     int totalItems = processingOrder.size();
